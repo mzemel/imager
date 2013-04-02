@@ -1,0 +1,8 @@
+Pin 0 - 2^0 - 1 -Unallocated
+Pin 1 - 2^1 - 2 - 7v/4v
+Pin 2 - 2^2 - 4 - 8v/4.5v
+Pin 3 - 2^3 - 8 - 9v/5v
+Pin 4 - 2^4 - 16 - 10v/5.5v
+Pin 5 - 2^5 - 32 - 11v/6v
+Pin 6 - 2^6 - 64 - Brad ON
+Pin 7 - 2^7 - 128 - Chad ON
