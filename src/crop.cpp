@@ -187,9 +187,9 @@ int main(int argc, char* argv[]){
 	string dir_beta = str;
 	dir_beta.erase(11);
 
-	FILE * pFile;
+	//FILE * pFile;
 	dir_beta.append("crop.txt");
-	cout << dir_beta << endl;
+	//cout << dir_beta << endl;
 	//char cropfile[(int)dir_beta.length()];
 	//for (int i=0;i<(int)dir_beta.length();i++){
 	//	cropfile[i]=dir_beta[i];
@@ -212,13 +212,13 @@ int main(int argc, char* argv[]){
 
 	//as per: https://bbs.archlinux.org/viewtopic.php?pid=1147323#p1147323
 	int in_w = 640-cleft-cright;
-	if (in_w < 0){in_w = 0;}
+	if (in_w <= 0){in_w = 640;}
 	string in_w_str = to_string(in_w);
 	//sprintf(in_w_str,"%d", in_w);
 
 
 	int in_h = 480-(int)ctop-(int)cbottom;
-	if (in_h < 0){in_h = 0;}
+	if (in_h <= 0){in_h = 480;}
 	string in_h_str = to_string(in_h);
 	//sprintf(in_h_str,"%d", in_h);
 

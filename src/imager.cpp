@@ -16,6 +16,8 @@ using namespace cimg_library;
 using namespace std;
 
 #define PI 3.14159265
+#define cimg_debug 0     // Disable modal window in CImg exceptions.
+//#define "CImg.h"
 
 //to do: increase cut-off for what's a valid line length
 //gui for rectifying invalids
@@ -38,22 +40,32 @@ float get_std_dev(int a, int b, CImg<unsigned char> *pimages, int files_size, fl
 	float math3;
 	float deviation[files_size-2];
 	for (int j=0;j<(files_size-2);j++){
-		red = (float)pimages[j].atXY(a,b,0,0);
-		green = (float)pimages[j].atXY(a,b,0,1);
-		blue = (float)pimages[j].atXY(a,b,0,2);
-		intensity = ((0.2126*(red))+(0.7152*(green))+(0.0722*(blue)));
-		sum+=intensity;
+		try{
+			red = (float)pimages[j].atXY(a,b,0,0);
+			green = (float)pimages[j].atXY(a,b,0,1);
+			blue = (float)pimages[j].atXY(a,b,0,2);
+			intensity = ((0.2126*(red))+(0.7152*(green))+(0.0722*(blue)));
+			sum+=intensity;
+		}
+		catch (CImgInstanceException &e){
+			continue;
+		}
 	}
 	average = sum/(files_size-2);
 	paverage_by_pixel[a+b*x] = average;
 	for (int k=0;k<(files_size-2);k++){
-		red = (float)pimages[k].atXY(a,b,0,0);
-		green = (float)pimages[k].atXY(a,b,0,1);
-		blue = (float)pimages[k].atXY(a,b,0,2);
-		intensity = ((0.2126*(red))+(0.7152*(green))+(0.0722*(blue)));
-		deviation[k]=abs(intensity-average);
-		deviation[k]*=deviation[k];
-		sum2+=deviation[k];
+		try{
+			red = (float)pimages[k].atXY(a,b,0,0);
+			green = (float)pimages[k].atXY(a,b,0,1);
+			blue = (float)pimages[k].atXY(a,b,0,2);
+			intensity = ((0.2126*(red))+(0.7152*(green))+(0.0722*(blue)));
+			deviation[k]=abs(intensity-average);
+			deviation[k]*=deviation[k];
+			sum2+=deviation[k];
+		}
+		catch (CImgInstanceException &e){
+			continue;
+		}
 	}
 	math3 = (float)(sum2/(files_size-3));
 	math3 = sqrt(math3);
@@ -93,19 +105,24 @@ void catchdeviants(float *pstd_dev, int *pdeviantcount, CImg<unsigned char>* pim
 		pdeviantcount[i+1]=0;
 		for (int j=10;j<(y-10);j++){//I could pad the scan here to not include the frame.
 			for (int k=10;k<(x-10);k++){//I'm doin' it.
-				red1 = (float)pimages[i].atXY(k,j,0,0);
-				green1 = (float)pimages[i].atXY(k,j,0,1);
-				blue1 = (float)pimages[i].atXY(k,j,0,2);
-				intensity1 = ((0.2126*(red1))+(0.7152*(green1))+(0.0722*(blue1)));
-				red2 = (float)pimages[i+1].atXY(k,j,0,0);
-				green2 = (float)pimages[i+1].atXY(k,j,0,1);
-				blue2 = (float)pimages[i+1].atXY(k,j,0,2);
-				intensity2 = ((0.2126*(red2))+(0.7152*(green2))+(0.0722*(blue2)));
-				if (abs(intensity2-intensity1)>4*pstd_dev[k+j*x] && intensity2<100){
-//				if pixel is more than one standard deviation different
-					pdeviantcount[i+1]+=1;
+				try{
+					red1 = (float)pimages[i].atXY(k,j,0,0);
+					green1 = (float)pimages[i].atXY(k,j,0,1);
+					blue1 = (float)pimages[i].atXY(k,j,0,2);
+					intensity1 = ((0.2126*(red1))+(0.7152*(green1))+(0.0722*(blue1)));
+					red2 = (float)pimages[i+1].atXY(k,j,0,0);
+					green2 = (float)pimages[i+1].atXY(k,j,0,1);
+					blue2 = (float)pimages[i+1].atXY(k,j,0,2);
+					intensity2 = ((0.2126*(red2))+(0.7152*(green2))+(0.0722*(blue2)));
+					if (abs(intensity2-intensity1)>4*pstd_dev[k+j*x] && intensity2<100){
+	//				if pixel is more than one standard deviation different
+						pdeviantcount[i+1]+=1;
+					}
+					else continue;
 				}
-				else continue;
+				catch (CImgInstanceException &e){
+					continue;
+				}		
 			}
 		}
 	}
@@ -504,127 +521,142 @@ void get_deviants(int files_size, int *pdeviantcount, vector<string> &files, int
 	log << "Image,Angle,Time,Validity\n";
 
 	for (int i=0;i<(files_size-3);i++){
-		if ((pdeviantcount[i+1]>(1*math1) && pdeviantcount[i+1]>20) | (i==(files_size-4))){//This should be adjustable, based on how motive the fish is.  Make the cut-off lower for more motile fish (as there'll be a higher "average deviance", making the cut-off high will not allow any images through.)  Make the cut-off lower for less motile fish.
-			cout << files[i] << " (" << pdeviantcount[i+1] << ", ";
-			darksum=0, darkcount=0;
-			lightsum=0, lightcount=0;
-			temp = pimages[i+1];
-			temp.fill(255);
-			if (i!=(files_size-4)){
-				for (int j=0;j<y;j++){
-					for (int k=0;k<x;k++){
-						red1 = (float)pimages[i].atXY(k,j,0,0);
-						green1 = (float)pimages[i].atXY(k,j,0,1);
-						blue1 = (float)pimages[i].atXY(k,j,0,2);
-						intensity1 = ((0.2126*(red1))+(0.7152*(green1))+(0.0722*(blue1)));
-						red2 = (float)pimages[i+1].atXY(k,j,0,0);
-						green2 = (float)pimages[i+1].atXY(k,j,0,1);
-						blue2 = (float)pimages[i+1].atXY(k,j,0,2);
-						intensity2 = ((0.2126*(red2))+(0.7152*(green2))+(0.0722*(blue2)));
-						if (abs(intensity2-intensity1)>pstd_dev[k+j*x] && abs(intensity1-paverage_by_pixel[k+j*x])>(3*pstd_dev[k+j*x]) && intensity1<100){//if there's enough deviation and our new frame is fresh (eliminates trails)
-							/*temp(k,j,0,0)=(int)intensity2;
-							temp(k,j,0,1)=(int)intensity2;
-							temp(k,j,0,2)=(int)intensity2;*/
-							darksum+=intensity1;
-							darkcount+=1;
-						}
-						/*if (intensity2<100){
-							temp(k,j,0,0)=(int)intensity2;
-							temp(k,j,0,1)=(int)intensity2;
-							temp(k,j,0,2)=(int)intensity2;
-						}*/
-						else {
-							lightsum+=intensity1;
-							lightcount+=1;
+		try{
+			pimages[i+1].atXY(0,0,0,0); //checks to make sure it's a valid image
+			if ((pdeviantcount[i+1]>(1*math1) && pdeviantcount[i+1]>20) | (i==(files_size-4))){//This should be adjustable, based on how motive the fish is.  Make the cut-off lower for more motile fish (as there'll be a higher "average deviance", making the cut-off high will not allow any images through.)  Make the cut-off lower for less motile fish.
+				cout << files[i] << " (" << pdeviantcount[i+1] << ", ";
+				darksum=0, darkcount=0;
+				lightsum=0, lightcount=0;
+				temp = pimages[i+1];
+				temp.fill(255);
+				if (i!=(files_size-4)){
+					for (int j=0;j<y;j++){
+						for (int k=0;k<x;k++){
+							red1 = (float)pimages[i].atXY(k,j,0,0);
+							green1 = (float)pimages[i].atXY(k,j,0,1);
+							blue1 = (float)pimages[i].atXY(k,j,0,2);
+							intensity1 = ((0.2126*(red1))+(0.7152*(green1))+(0.0722*(blue1)));
+							red2 = (float)pimages[i+1].atXY(k,j,0,0);
+							green2 = (float)pimages[i+1].atXY(k,j,0,1);
+							blue2 = (float)pimages[i+1].atXY(k,j,0,2);
+							intensity2 = ((0.2126*(red2))+(0.7152*(green2))+(0.0722*(blue2)));
+							if (abs(intensity2-intensity1)>pstd_dev[k+j*x] && abs(intensity1-paverage_by_pixel[k+j*x])>(3*pstd_dev[k+j*x]) && intensity1<100){//if there's enough deviation and our new frame is fresh (eliminates trails)
+								/*temp(k,j,0,0)=(int)intensity2;
+								temp(k,j,0,1)=(int)intensity2;
+								temp(k,j,0,2)=(int)intensity2;*/
+								darksum+=intensity1;
+								darkcount+=1;
+							}
+							/*if (intensity2<100){
+								temp(k,j,0,0)=(int)intensity2;
+								temp(k,j,0,1)=(int)intensity2;
+								temp(k,j,0,2)=(int)intensity2;
+							}*/
+							else {
+								lightsum+=intensity1;
+								lightcount+=1;
+							}
 						}
 					}
+					darkavg = darksum/darkcount;
+					lightavg = lightsum/lightcount;
 				}
-				darkavg = darksum/darkcount;
-				lightavg = lightsum/lightcount;
-			}
-			if ((2*darkavg<lightavg) | (i==(files_size-4))){
-				for (int l=10;l<y-10;l++){
-					for (int m=10;m<x-10;m++){
-						red1 = (float)pimages[i].atXY(m,l,0,0);
-						green1 = (float)pimages[i].atXY(m,l,0,1);
-						blue1 = (float)pimages[i].atXY(m,l,0,2);
-						intensity1 = ((0.2126*(red1))+(0.7152*(green1))+(0.0722*(blue1)));
-						/*red2 = (float)pimages[i+1].atXY(m,l,0,0);
-						green2 = (float)pimages[i+1].atXY(m,l,0,1);
-						blue2 = (float)pimages[i+1].atXY(m,l,0,2);
-						intensity2 = ((0.2126*(red2))+(0.7152*(green2))+(0.0722*(blue2)));*/
-						if (2*(abs(intensity1-darkavg))<abs(intensity1-lightavg)/* && abs(intensity1-paverage_by_pixel[m+l*x])>(.5*pstd_dev[m+l*x])*/){
-							temp(m,l,0,0)=(int)intensity1;
-							temp(m,l,0,1)=(int)intensity1;
-							temp(m,l,0,2)=(int)intensity1;
-							//note to self: consider making the pixel value simply 0 (black)?
+				if ((2*darkavg<lightavg) | (i==(files_size-4))){
+					for (int l=10;l<y-10;l++){
+						for (int m=10;m<x-10;m++){
+							red1 = (float)pimages[i].atXY(m,l,0,0);
+							green1 = (float)pimages[i].atXY(m,l,0,1);
+							blue1 = (float)pimages[i].atXY(m,l,0,2);
+							intensity1 = ((0.2126*(red1))+(0.7152*(green1))+(0.0722*(blue1)));
+							/*red2 = (float)pimages[i+1].atXY(m,l,0,0);
+							green2 = (float)pimages[i+1].atXY(m,l,0,1);
+							blue2 = (float)pimages[i+1].atXY(m,l,0,2);
+							intensity2 = ((0.2126*(red2))+(0.7152*(green2))+(0.0722*(blue2)));*/
+							if (2*(abs(intensity1-darkavg))<abs(intensity1-lightavg)/* && abs(intensity1-paverage_by_pixel[m+l*x])>(.5*pstd_dev[m+l*x])*/){
+								temp(m,l,0,0)=(int)intensity1;
+								temp(m,l,0,1)=(int)intensity1;
+								temp(m,l,0,2)=(int)intensity1;
+								//note to self: consider making the pixel value simply 0 (black)?
+							}
+							//In plain english: if the intensity of a pixel is closer to the color of the fish 						(dark) than it is to the background (light) AND it's different enough from the 						average (assuming the fish moves around enough to make the average for any pixel 						closer to 'light' than 'dark'), then color that bastard in.
 						}
-						//In plain english: if the intensity of a pixel is closer to the color of the fish 						(dark) than it is to the background (light) AND it's different enough from the 						average (assuming the fish moves around enough to make the average for any pixel 						closer to 'light' than 'dark'), then color that bastard in.
 					}
+					cout << "*";
 				}
-				cout << "*";
-			}
-			else{
-				cout << endl;
-				continue;
-			}
-			cout << darkavg << ", " << lightavg << ", ";
-			float angle=999;
-			int validity=0;
-			temp = orientation(temp, angle, validity);
+				else{
+					cout << endl;
+					continue;
+				}
+				cout << darkavg << ", " << lightavg << ", ";
+				float angle=999;
+				int validity=0;
+				temp = orientation(temp, angle, validity);
 
-			string strang = files[i];
-			strang.erase(0,5);
-			if (strang.at(0)=='0'){
-				if (strang.at(1)=='0'){
-					if (strang.at(2)=='0'){
+				string strang = files[i];
+				strang.erase(0,5);
+				if (strang.at(0)=='0'){
+					if (strang.at(1)=='0'){
+						if (strang.at(2)=='0'){
+							strang.erase(0,1);
+						}
 						strang.erase(0,1);
 					}
 					strang.erase(0,1);
 				}
-				strang.erase(0,1);
-			}
 
-			int strangval = (atoi(strang.c_str()));
-			int time = strangval-remainder;
-			remainder = strangval;
+				int strangval = (atoi(strang.c_str()));
+				int time = strangval-remainder;
+				remainder = strangval;
 
-			if (angle!=999 && validity!=0){
-				cout << "*";
-				log << files[i] << "," << angle << "," << time*2 << "," << validity << endl;
-				angles.push_back((int)angle);
-				times.push_back(time); //push back time!
-			}
-			else if (angle==999 && time>5){
-				log << files[i] << ",error,no,object" << endl; //put in rectified version to make user-friendly
-				invalids.push_back(files[i]);
-				invalids_time.push_back(time);
-				continue;
-			}
-			else if (validity==0 && time>5){
-				log << files[i] << "error,inconsistent,object" << endl;
-				invalids.push_back(files[i]);
-				invalids_time.push_back(time);
-				continue;
-			}
-			cout << ")\n";
-			str = files[i];
-			if (str.at(5) == '0'){
-				if (str.at(6) == '0'){
-					if (str.at(7) == '0'){
-						str.erase(5,3);
-						str.append(".jpg");
-						str.insert(0,"/");
-						str.insert(0,outputstring);
-						char r[(int)str.length()];
-						for (int j=0;j<(int)str.length();j++){
-							r[j]=str.at(j);
+				if (angle!=999 && validity!=0){
+					cout << "*";
+					log << files[i] << "," << angle << "," << time*2 << "," << validity << endl;
+					angles.push_back((int)angle);
+					times.push_back(time); //push back time!
+				}
+				else if (angle==999 && time>5){
+					log << files[i] << ",error,no,object" << endl; //put in rectified version to make user-friendly
+					invalids.push_back(files[i]);
+					invalids_time.push_back(time);
+					continue;
+				}
+				else if (validity==0 && time>5){
+					log << files[i] << "error,inconsistent,object" << endl;
+					invalids.push_back(files[i]);
+					invalids_time.push_back(time);
+					continue;
+				}
+				cout << ")\n";
+				str = files[i];
+				if (str.at(5) == '0'){
+					if (str.at(6) == '0'){
+						if (str.at(7) == '0'){
+							str.erase(5,3);
+							str.append(".jpg");
+							str.insert(0,"/");
+							str.insert(0,outputstring);
+							char r[(int)str.length()];
+							for (int j=0;j<(int)str.length();j++){
+								r[j]=str.at(j);
+							}
+							r[(int)str.length()]='\0';
+							temp.save_jpeg(r);
 						}
-						r[(int)str.length()]='\0';
-						temp.save_jpeg(r);
+						else {
+							str.erase(5,2);
+							str.append(".jpg");
+							str.insert(0,"/");
+							str.insert(0,outputstring);
+							char r[(int)str.length()];
+							for (int j=0;j<(int)str.length();j++){
+								r[j]=str.at(j);
+							}
+							r[(int)str.length()]='\0';
+							temp.save_jpeg(r);
+						}
 					}
 					else {
-						str.erase(5,2);
+						str.erase(5,1);
 						str.append(".jpg");
 						str.insert(0,"/");
 						str.insert(0,outputstring);
@@ -636,8 +668,7 @@ void get_deviants(int files_size, int *pdeviantcount, vector<string> &files, int
 						temp.save_jpeg(r);
 					}
 				}
-				else {
-					str.erase(5,1);
+				else{
 					str.append(".jpg");
 					str.insert(0,"/");
 					str.insert(0,outputstring);
@@ -646,22 +677,14 @@ void get_deviants(int files_size, int *pdeviantcount, vector<string> &files, int
 						r[j]=str.at(j);
 					}
 					r[(int)str.length()]='\0';
-					temp.save_jpeg(r);
+					temp.save_jpeg(r);;
 				}
 			}
-			else{
-				str.append(".jpg");
-				str.insert(0,"/");
-				str.insert(0,outputstring);
-				char r[(int)str.length()];
-				for (int j=0;j<(int)str.length();j++){
-					r[j]=str.at(j);
-				}
-				r[(int)str.length()]='\0';
-				temp.save_jpeg(r);;
-			}
+			else continue;
 		}
-		else continue;
+		catch (CImgInstanceException &e){
+			continue;
+		}
 	}
 	
 	log.close();
@@ -701,7 +724,7 @@ void generate_histogram(ofstream &histogram, vector<int> &angles, vector<int> &t
 	}
 	histogram << "angle time #" << endl;
 	for (int b=0;b<360;b++){
-		histogram << b << " " << atarray[b+360] << " " << atarray[b] << endl;
+		histogram << b << " " << atarray[b+360] << endl;// << " " << atarray[b] << endl;
 	}
 }
 //Produces a text file (in the "data" folder) with angle by time and # snapshots.  Essentially the culmination of this program.
@@ -819,7 +842,13 @@ int main(int argc, char *argv[]){
 							r[j]=str.at(j);
 						}
 						r[(int)str.length()]='\0';
-						pimages[i].load(r);
+						try {
+							pimages[i].load(r);
+						}
+						catch (CImgIOException &e) {
+							//std::fprintf(stderr,"CImg Library Error : %s",e.message);
+							continue;
+						}
 					}
 					else {
 						str.erase(5,2);
@@ -831,7 +860,13 @@ int main(int argc, char *argv[]){
 							r[j]=str.at(j);
 						}
 						r[(int)str.length()]='\0';
-						pimages[i].load(r);
+						try {
+							pimages[i].load(r);
+						}
+						catch (CImgIOException &e) {
+							//std::fprintf(stderr,"CImg Library Error : %s",e.message);
+							continue;
+						}
 					}
 				}
 				else {
@@ -844,7 +879,13 @@ int main(int argc, char *argv[]){
 						r[j]=str.at(j);
 					}
 					r[(int)str.length()]='\0';
-					pimages[i].load(r);
+					try {
+						pimages[i].load(r);
+					}
+					catch (CImgIOException &e) {
+						//std::fprintf(stderr,"CImg Library Error : %s",e.message);
+						continue;
+					}
 				}
 			}
 			else{
@@ -856,7 +897,13 @@ int main(int argc, char *argv[]){
 					r[j]=str.at(j);
 				}
 				r[(int)str.length()]='\0';
-				pimages[i].load(r);
+				try {
+					pimages[i].load(r);
+				}
+				catch (CImgIOException &e) {
+					//std::fprintf(stderr,"CImg Library Error : %s",e.message);
+					continue;
+				}
 			}
 		}
 	}
