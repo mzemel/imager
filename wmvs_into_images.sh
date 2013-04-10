@@ -6,7 +6,7 @@ video_trunc=( $(ls $1 | grep "\.wmv" | sed 's/\.wmv//g;s/\ /_/g;s/(//g;s/)//g') 
 arraysize=$(ls $1 | grep "\.wmv" | wc -l)
 
 g++ -o /home/randylab/imager/bin/imager /home/randylab/imager/src/imager.cpp -lpthread -lX11 -I/usr/include/ImageMagick -lMagick++ -lMagickWand -lMagickCore -Wall -Wextra -g
-g++ -std=c++11 -o /home/randylab/imager/bin/crop /home/randylab/imager/src/crop.cpp -L/opt/lib -lpthread -lX11 -Wall -Wextra -g
+g++ -o /home/randylab/imager/bin/crop /home/randylab/imager/src/crop.cpp -L/opt/lib -lpthread -lX11 -Wall -Wextra -g
 
 for ((a=0; a < arraysize ; a++)) do
 	ffmpeg -i "$1/${video[$a]}" "$1/${video_trunc[$a]}".jpg

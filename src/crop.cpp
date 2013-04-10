@@ -20,6 +20,13 @@ using namespace std;
 float intensity(int x, int y, CImg<unsigned char> image){
 	return (0.2126*((float)image.atXY(x,y,0,0))+0.7152*((float)image.atXY(x,y,0,1))+0.0722*((float)image.atXY(x,y,0,2)));
 }
+
+string convertInt(int number)
+{
+   stringstream ss;//create a stringstream
+   ss << number;//add number to the stream
+   return ss.str();//return a string with the contents of the stream
+}
 	
 //So the gist of this:
 //It takes, as an argument from "shell.sh", a character array of the name of that image I mentioned in "shell.sh".  If you're just joining us now, it's just the third image (i0002.jpeg) from the first flow speed of whatever folder got yanked when "shell.sh" was invoked.  Random image, not really important which is used.
@@ -213,18 +220,18 @@ int main(int argc, char* argv[]){
 	//as per: https://bbs.archlinux.org/viewtopic.php?pid=1147323#p1147323
 	int in_w = 640-cleft-cright;
 	if (in_w <= 0){in_w = 640;}
-	string in_w_str = to_string(in_w);
+	string in_w_str = convertInt(in_w);
 	//sprintf(in_w_str,"%d", in_w);
 
 
 	int in_h = 480-(int)ctop-(int)cbottom;
 	if (in_h <= 0){in_h = 480;}
-	string in_h_str = to_string(in_h);
+	string in_h_str = convertInt(in_h);
 	//sprintf(in_h_str,"%d", in_h);
 
 
-	string x = to_string(cleft);
-	string y = to_string(ctop);
+	string x = convertInt(cleft);
+	string y = convertInt(ctop);
 	//sprintf(x,"%d", cleft);
 	//sprintf(y,"%d", ctop);
 

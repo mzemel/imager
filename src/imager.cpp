@@ -12,8 +12,10 @@
 #include <sstream>
 #include <fstream>
 #include "time.h"
+#include <Magick++.h>
 using namespace cimg_library;
 using namespace std;
+using namespace Magick;
 
 #define PI 3.14159265
 #define cimg_debug 0     // Disable modal window in CImg exceptions.
@@ -31,14 +33,21 @@ using namespace std;
 //getting that log.txt in there seems to be the straw that breaks the camels back.  consolidate everything...
 
 
+/*
+DEBUGGING:
+THERE ARE SEVERAL LINES OF COUT.  LOOK FOR THE COMMENTED OUT ONES TO ENABLE OUTPUT AT EACH STAGE
+*/
+
+
 
 //Function declarations (in order of implementation):
 //---------------------------------------------------
 float get_std_dev(int a, int b, CImg<unsigned char> *pimages, int files_size, float *paverage_by_pixel, int x){
 	float intensity, red, green, blue;
-	float sum=0, average, sum2=0;
-	float math3;
+	float sum=0, average, sumofsquares=0;
+	float px_std_dev;
 	float deviation[files_size-2];
+	//cout << "Calculating intensity for (" << a << "," << b << ") by image...\n";
 	for (int j=0;j<(files_size-2);j++){
 		try{
 			red = (float)pimages[j].atXY(a,b,0,0);
@@ -46,11 +55,13 @@ float get_std_dev(int a, int b, CImg<unsigned char> *pimages, int files_size, fl
 			blue = (float)pimages[j].atXY(a,b,0,2);
 			intensity = ((0.2126*(red))+(0.7152*(green))+(0.0722*(blue)));
 			sum+=intensity;
+			//cout << intensity << " ";
 		}
 		catch (CImgInstanceException &e){
 			continue;
 		}
 	}
+	//cout << "Attempting to calculate a standard deviation for this pixel...\n";
 	average = sum/(files_size-2);
 	paverage_by_pixel[a+b*x] = average;
 	for (int k=0;k<(files_size-2);k++){
@@ -61,15 +72,16 @@ float get_std_dev(int a, int b, CImg<unsigned char> *pimages, int files_size, fl
 			intensity = ((0.2126*(red))+(0.7152*(green))+(0.0722*(blue)));
 			deviation[k]=abs(intensity-average);
 			deviation[k]*=deviation[k];
-			sum2+=deviation[k];
+			sumofsquares+=deviation[k];
 		}
 		catch (CImgInstanceException &e){
 			continue;
 		}
 	}
-	math3 = (float)(sum2/(files_size-3));
-	math3 = sqrt(math3);
-	return math3;
+	px_std_dev = (float)(sumofsquares/(files_size-3));
+	px_std_dev = sqrt(px_std_dev);
+	//cout << "Standard deviation for (" << a << "," << b << ") is: " << px_std_dev << endl;
+	return px_std_dev;
 }
 //Used for each pixel.  Finds the standard deviation through all images for that pixel and returns it as a float.
 
@@ -590,8 +602,13 @@ void get_deviants(int files_size, int *pdeviantcount, vector<string> &files, int
 				cout << darkavg << ", " << lightavg << ", ";
 				float angle=999;
 				int validity=0;
-				temp = orientation(temp, angle, validity);
-
+				try{
+					temp = orientation(temp, angle, validity);
+				}
+				catch (CImgInstanceException &e){
+					continue;
+				}
+				//If orientation fails with 'CImg<unsigned char>::atXY(); Empty instance.' then continue gracefully.
 				string strang = files[i];
 				strang.erase(0,5);
 				if (strang.at(0)=='0'){
@@ -808,6 +825,8 @@ int main(int argc, char *argv[]){
 		else {
 		files[i]="null";
 		}
+		//cout << files[i] << endl;
+		//Print the file names, in case .DS_Store is getting read and not named null.
 	}
 	//Changes the names of all images from "image'n'.jpg" to "image'000n'" in order to collate them ahead.  It's necessary that all images are called "image'n'.jpg" and that none exceed "image9999.jpg".  That, however, is easy to fix.  "." and ".." are renamed "null".
 
@@ -844,9 +863,13 @@ int main(int argc, char *argv[]){
 						r[(int)str.length()]='\0';
 						try {
 							pimages[i].load(r);
+							//if (!pimages[i].atXY(0,0,0,0)){
+							//	throw;
+							//}
 						}
 						catch (CImgIOException &e) {
 							//std::fprintf(stderr,"CImg Library Error : %s",e.message);
+							cout << "Load error.\n";
 							continue;
 						}
 					}
@@ -865,6 +888,7 @@ int main(int argc, char *argv[]){
 						}
 						catch (CImgIOException &e) {
 							//std::fprintf(stderr,"CImg Library Error : %s",e.message);
+							cout << "Load error.\n";
 							continue;
 						}
 					}
@@ -884,6 +908,7 @@ int main(int argc, char *argv[]){
 					}
 					catch (CImgIOException &e) {
 						//std::fprintf(stderr,"CImg Library Error : %s",e.message);
+						cout << "Load error.\n";
 						continue;
 					}
 				}
@@ -902,6 +927,7 @@ int main(int argc, char *argv[]){
 				}
 				catch (CImgIOException &e) {
 					//std::fprintf(stderr,"CImg Library Error : %s",e.message);
+					cout << "Load error.\n";
 					continue;
 				}
 			}
@@ -938,6 +964,7 @@ int main(int argc, char *argv[]){
 	//-----------------------------
 	//Array Filling
 	//-----------------------------
+	cout << "Attempting to extract standard deviations.\n";
 	for (int b=0;b<y;b++){
 		for (int a=0;a<x;a++){
 			pstd_dev[a+b*x] = get_std_dev(a,b,pimages,files_size,paverage_by_pixel,x);
